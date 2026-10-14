@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rotary Exchange Chat</title>
+    <script src="https://cdn.scaledrone.com/Scaledrone.min.js"></script>
+    <style>
+        body { 
+            background-color: #1e1a17; 
+            color: #d4c5b3; 
+            font-family: 'Courier New', monospace; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0; 
+        }
+        .telephone-housing { 
+            background: #110e0c; 
+            border: 4px solid #3d352e; 
+            border-radius: 20px; 
+            padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            max-width: 400px; 
+            width: 100%; 
+            text-align: center; 
+        }
+        h2 { 
+            margin: 0 0 5px 0; 
+            color: #e67e22; 
+            letter-spacing: 2px; 
+            font-size: 16px; 
+            text-transform: uppercase; 
+        }
+        #display-panel { 
+            height: 200px; 
+            border: 2px solid #3d352e; 
+            border-radius: 8px; 
+            overflow-y: scroll; 
+            padding: 12px; 
+            margin-bottom: 20px; 
+            background: #09120b; 
+            color: #4af626; 
+            text-align: left; 
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.9); 
+            font-size: 13px; 
+        }
+        .line { margin-bottom: 6px; }
+        .sys { color: #e67e22; }
+        
+        /* Rotary Dial Visual Styles */
+        .rotary-container {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 15px auto;
+        }
+        .dial-numbers {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        .dial-number {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e67e22;
+            font-weight: bold;
+            font-size: 17px;
+            text-shadow: 0 0 6px rgba(230, 126, 34, 0.45);
+        }
+        .rotary-dial {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            transform-origin: center;
+            z-index: 2;
+        }
+        .dial-face {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            pointer-events: none;
+        }
+        .center-cap { 
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70px; 
+            height: 70px; 
+            background: #110e0c; 
+            border: 4px solid #3d352e; 
+            border-radius: 50%; 
+            color: #e67e22; 
+            font-weight: bold; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            font-size: 11px; 
+            z-index: 10; 
+        }
+        .dial-hole {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+        }
+        .room-controls { display: flex; justify-content: center; gap: 10px; }
+        .clear-btn {
+            margin-top: 10px;
+            background: transparent;
+            color: #d4c5b3;
+            border: 1px solid #52473e;
+            padding: 8px 14px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .clear-btn:hover { background: #251c16; }
+        
+        .operator-panel { display: flex; gap: 10px; margin-top: 20px; }
+        #msg-line { 
+            flex-grow: 1; 
+            background: #1e1a17; 
+            border: 2px solid #52473e; 
+            color: #d4c5b3; 
+            padding: 10px; 
+            font-family: inherit; 
+            border-radius: 4px; 
+        }
+        .crank-btn { 
+            background: #e67e22; 
+            color: #110e0c; 
+            border: none; 
+            padding: 10px 20px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-family: inherit; 
+            border-radius: 4px; 
+            text-transform: uppercase; 
+        }
+        .crank-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .create-btn {
+            margin-top: 10px;
+            background: transparent;
+            color: #e67e22;
+            border: 1px solid #52473e;
+            padding: 8px 14px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .create-btn:hover { background: #251c16; }
+    </style>
+</head>
+<body>
+
+    <div class="telephone-housing">
+        <h2>Bell System Exchange</h2>
+        <div style="font-size: 11px; margin-bottom: 10px; color: #8a7663;">DIAL A CODE OR CREATE A RANDOM ROOM</div>
+        
+        <div id="display-panel">
+            <div class="line sys">[OPERATOR]: LINE IS CURRENTLY DISCONNECTED.</div>
+            <div class="line sys">[OPERATOR]: DIAL A 4-DIGIT GROUP ID CODE TO PATCH INTO A LINE.</div>
+        </div>
+        
+        <div class="rotary-container">
+            <div class="dial-numbers" id="dial-numbers" aria-hidden="true"></div>
+            <div class="center-cap">
+                <span style="font-size: 9px; color: #8a7663;">CURRENT CODE</span>
+                <span id="dial-digits" style="font-size: 16px; color: #fff; letter-spacing: 1px;">----</span>
+            </div>
+            <div class="rotary-dial" id="wheel">
+                <svg class="dial-face" viewBox="0 0 220 220" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="dial-gradient" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#302720" />
+                            <stop offset="100%" stop-color="#181310" />
+                        </linearGradient>
+                        <mask id="dial-cutouts" maskUnits="userSpaceOnUse" x="0" y="0" width="220" height="220">
+                            <circle cx="110" cy="110" r="107" fill="white" />
+                            <circle cx="169.4" cy="169.4" r="18" fill="black" />
+                            <circle cx="137.34" cy="189.52" r="18" fill="black" />
+                            <circle cx="99.78" cy="193.23" r="18" fill="black" />
+                            <circle cx="64.31" cy="180.44" r="18" fill="black" />
+                            <circle cx="38.01" cy="153.39" r="18" fill="black" />
+                            <circle cx="26.3" cy="117.32" r="18" fill="black" />
+                            <circle cx="31.56" cy="79.92" r="18" fill="black" />
+                            <circle cx="53.04" cy="48.45" r="18" fill="black" />
+                            <circle cx="85.38" cy="29.55" r="18" fill="black" />
+                            <circle cx="123.11" cy="27.12" r="18" fill="black" />
+                        </mask>
+                    </defs>
+                    <circle cx="110" cy="110" r="107" fill="url(#dial-gradient)" stroke="#4a3e35" stroke-width="6" mask="url(#dial-cutouts)" />
+                </svg>
+            </div>
+        </div>
+        <div class="room-controls">
+            <button class="create-btn" onclick="createRoom()">Create Random Room</button>
+            <button class="clear-btn" onclick="clearCode()">Clear Code</button>
+        </div>
+
+        <div class="operator-panel">
+            <input type="text" id="msg-line" placeholder="Line locked. Dial 4 digits..." disabled onkeydown="if(event.key==='Enter') send()">
+            <button class="crank-btn" id="send-btn" onclick="send()" disabled>Send</button>
+        </div>
+    </div>
+
+    <script>
+        const wheel = document.getElementById('wheel');
+        const digitsDisplay = document.getElementById('dial-digits');
+        const displayPanel = document.getElementById('display-panel');
+        const msgInput = document.getElementById('msg-line');
+        const sendBtn = document.getElementById('send-btn');
+        const dialNumbers = document.getElementById('dial-numbers');
+
+        let dialedCode = "";
+        let isDialing = false;
+        let drone = null;
+        let room = null;
+        let dialAnimation = null;
+        let connectionAttempt = 0;
+        let audioContext = null;
+
+        const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+        const startingAngle = 45; 
+        const angleSpacing = 26; 
+
+        numbers.forEach((num, index) => {
+            const angle = startingAngle + (index * angleSpacing);
+            const radius = 84;
+            const angleRad = (angle * Math.PI) / 180;
+            const x = 110 + radius * Math.cos(angleRad) - 18;
+            const y = 110 + radius * Math.sin(angleRad) - 18;
+
+            const label = document.createElement('div');
+            label.className = 'dial-number';
+            label.innerText = num;
+            label.style.left = `${x}px`;
+            label.style.top = `${y}px`;
+            dialNumbers.appendChild(label);
+
+            const hole = document.createElement('div');
+            hole.className = 'dial-hole';
+            hole.style.left = `${x + 3}px`;
+            hole.style.top = `${y + 3}px`;
+            hole.setAttribute('aria-label', `Dial ${num}`);
+            hole.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dialNumber(num, angle);
+            });
+            wheel.appendChild(hole);
+        });
+
+        function dialNumber(num, targetAngle) {
+            if (dialedCode.length >= 4 || isDialing) return;
+
+            isDialing = true;
+            playClickSound(num);
+
+            const returnAngle = 250 - targetAngle;
+            const animation = wheel.animate([
+                { transform: 'rotate(0deg)' },
+                { transform: `rotate(${returnAngle}deg)`, offset: 0.45 },
+                { transform: 'rotate(0deg)' }
+            ], {
+                duration: 4000,
+                easing: 'cubic-bezier(0.45, 0, 0.25, 1)'
+            });
+            dialAnimation = animation;
+
+            animation.finished.then(() => {
+                dialAnimation = null;
+                dialedCode += num;
+                digitsDisplay.innerText = dialedCode.padEnd(4, '-');
+                logMessage(`[MECHANICAL]: Digit '${num}' registered.`);
+                isDialing = false;
+
+                if (dialedCode.length === 4) {
+                    connectToLine(dialedCode);
+                }
+            }).catch(() => {});
+        }
+
+        function createRoom() {
+            if (isDialing) return;
+
+            dialedCode = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+            digitsDisplay.innerText = dialedCode;
+            logMessage(`[OPERATOR]: Created a new room code: ${dialedCode}. Connecting...`);
+            connectToLine(dialedCode);
+        }
+
+        function clearCode() {
+            connectionAttempt++;
+            if (dialAnimation) {
+                dialAnimation.cancel();
+                dialAnimation = null;
+            }
+            isDialing = false;
+
+            if (drone && typeof drone.close === 'function') {
+                try { drone.close(); } catch (error) {}
+            }
+            drone = null;
+            room = null;
+            resetPhone();
+            msgInput.value = '';
+            logMessage('[OPERATOR]: Room code cleared. The line is disconnected.');
+        }
+
+        function connectToLine(groupId) {
+            const attempt = ++connectionAttempt;
+            logMessage(`[OPERATOR]: Patching line cords into Exchange ID: ${groupId}...`);
+            msgInput.disabled = false;
+            msgInput.placeholder = "Connecting... you can type while the line opens.";
+
+            if (typeof ScaleDrone === 'undefined') {
+                logMessage('[ERROR]: The chat service library did not load. Check your internet connection or try again later.');
+                msgInput.placeholder = "Offline: chat service unavailable.";
+                return;
+            }
+
+            drone = new ScaleDrone('yjN46UoWpE8pL9fK'); 
+            const roomName = `observable-room-${groupId}`;
+
+            drone.on('open', error => {
+                if (attempt !== connectionAttempt) return;
+                if (error) {
+                    logMessage(`[ERROR]: Line connection failure! Reset phone.`);
+                    resetPhone();
+                    return console.error(error);
+                }
+                
+                room = drone.subscribe(roomName);
+                
+                room.on('open', error => {
+                    if (attempt !== connectionAttempt) return;
+                    if (error) return console.error(error);
+                    logMessage(`[OPERATOR]: LINE CONNECTED! Group Exchange ${groupId} is active.`);
+                    msgInput.disabled = false;
+                    sendBtn.disabled = false;
+                    msgInput.placeholder = "Speak into microphone here...";
+                    msgInput.focus();
+                });
+
+                room.on('message', message => {
+                    if (attempt !== connectionAttempt) return;
+                    logMessage(`${message.data}`);
+                });
+            });
+        }
+
+        function send() {
+            if (msgInput.value.trim() !== '' && room) {
+                const packet = `[Line ID-${dialedCode}]: ${msgInput.value}`;
+                drone.publish({
+                    room: `observable-room-${dialedCode}`,
+                    message: packet
+                });
+                msgInput.value = '';
+            }
+        }
+
+        function logMessage(text) {
+            const line = document.createElement('div');
+            line.className = 'line';
+            line.innerText = text;
+            displayPanel.appendChild(line);
+            displayPanel.scrollTop = displayPanel.scrollHeight;
+        }
+
+        function resetPhone() {
+            dialedCode = "";
+            digitsDisplay.innerText = "----";
+            msgInput.disabled = true;
+            sendBtn.disabled = true;
+            msgInput.placeholder = "Line locked. Dial 4 digits...";
+        }
+
+        function playClickSound(num) {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!audioContext) audioContext = new AudioContextClass();
+                const ctx = audioContext;
+
+                const playClicks = () => {
+                    const clickCount = num === '0' ? 10 : Number(num);
+                    const firstClick = ctx.currentTime + 0.92;
+                    const clickBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.025), ctx.sampleRate);
+                    const noise = clickBuffer.getChannelData(0);
+                    for (let i = 0; i < noise.length; i++) {
+                        noise[i] = (Math.random() * 2 - 1) * (1 - i / noise.length);
+                    }
+
+                    for (let i = 0; i < clickCount; i++) {
+                        const start = firstClick + i * 0.085;
+                        const source = ctx.createBufferSource();
+                        const filter = ctx.createBiquadFilter();
+                        const gain = ctx.createGain();
+                        source.buffer = clickBuffer;
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(2400, start);
+                        gain.gain.setValueAtTime(0.0001, start);
+                        gain.gain.linearRampToValueAtTime(0.16, start + 0.002);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.025);
+                        source.connect(filter);
+                        filter.connect(gain);
+                        gain.connect(ctx.destination);
+                        source.start(start);
+                        source.stop(start + 0.025);
+                    }
+                };
+
+                if (ctx.state === 'suspended') {
+                    ctx.resume().then(playClicks);
+                } else {
+                    playClicks();
+                }
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
